@@ -6,6 +6,8 @@ import (
 	_ "github.com/tarent/loginsrv/osiam"
 
 	"github.com/tarent/loginsrv/login"
+	"github.com/tarent/loginsrv/tracer"
+	"github.com/zean00/trace"
 
 	"context"
 	"fmt"
@@ -35,6 +37,10 @@ func main() {
 	}
 
 	handlerChain := logging.NewLogMiddleware(h)
+	ta, _ := os.LookupEnv("TRACER_AGENT")
+	closer, _ := trace.Initialization("loginsrv", ta)
+	defer closer.Close()
+	chain := tracer.NewTraceMiddleware(handlerChain)
 
 	stop := make(chan os.Signal)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
@@ -44,7 +50,7 @@ func main() {
 		port = fmt.Sprintf(":%s", port)
 	}
 
-	httpSrv := &http.Server{Addr: port, Handler: handlerChain}
+	httpSrv := &http.Server{Addr: port, Handler: chain}
 
 	go func() {
 		if err := httpSrv.ListenAndServe(); err != nil {

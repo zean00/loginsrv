@@ -1,7 +1,9 @@
 package login
 
 import (
+	"context"
 	"errors"
+
 	"github.com/tarent/loginsrv/model"
 )
 
@@ -47,4 +49,9 @@ func (sb *SimpleBackend) Authenticate(username, password string) (bool, model.Us
 		return true, model.UserInfo{Sub: username}, nil
 	}
 	return false, model.UserInfo{}, nil
+}
+
+//AuthenticateWithContext the user
+func (sb *SimpleBackend) AuthenticateWithContext(ctx context.Context, username, password string) (bool, model.UserInfo, error) {
+	return sb.Authenticate(username, password)
 }

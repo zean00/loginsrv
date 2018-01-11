@@ -1,10 +1,12 @@
 package osiam
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"github.com/tarent/loginsrv/model"
 	"net/url"
+
+	"github.com/tarent/loginsrv/model"
 )
 
 // Backend is the osiam authentication backend.
@@ -40,4 +42,9 @@ func (b *Backend) Authenticate(username, password string) (bool, model.UserInfo,
 		Sub: username,
 	}
 	return true, userInfo, nil
+}
+
+//AuthenticateWithContext traced authentication
+func (b *Backend) AuthenticateWithContext(ctx context.Context, username, password string) (bool, model.UserInfo, error) {
+	return b.Authenticate(username, password)
 }

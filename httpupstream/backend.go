@@ -1,6 +1,7 @@
 package httpupstream
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
@@ -76,6 +77,15 @@ func NewBackend(upstream *url.URL, timeout time.Duration, skipverify bool) (*Bac
 // Authenticate the user
 func (sb *Backend) Authenticate(username, password string) (bool, model.UserInfo, error) {
 	authenticated, err := sb.auth.Authenticate(username, password)
+	if authenticated && err == nil {
+		return authenticated, model.UserInfo{Sub: username}, err
+	}
+	return false, model.UserInfo{}, err
+}
+
+// AuthenticateWithContext the user
+func (sb *Backend) AuthenticateWithContext(ctx context.Context, username, password string) (bool, model.UserInfo, error) {
+	authenticated, err := sb.auth.AuthenticateWithContext(ctx, username, password)
 	if authenticated && err == nil {
 		return authenticated, model.UserInfo{Sub: username}, err
 	}

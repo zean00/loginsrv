@@ -1,0 +1,24 @@
+package: github.com/tarent/loginsrv
+import:
+- package: github.com/BTBurke/caddy-jwt
+- package: github.com/abbot/go-http-auth
+- package: github.com/dgrijalva/jwt-go
+- package: github.com/mholt/caddy
+  subpackages:
+  - caddy/caddymain
+  - caddyhttp/httpserver
+- package: github.com/tarent/lib-compose
+  subpackages:
+  - util
+- package: github.com/tarent/logrus
+- package: golang.org/x/crypto
+  subpackages:
+  - bcrypt
+- package: github.com/zean00/trace
+- package: github.com/opentracing/opentracing-go
+testImport:
+- package: github.com/gorilla/mux
+- package: github.com/stretchr/testify
+  subpackages:
+  - assert
+  - suite

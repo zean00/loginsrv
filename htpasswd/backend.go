@@ -1,10 +1,12 @@
 package htpasswd
 
 import (
+	"context"
 	"errors"
+	"strings"
+
 	"github.com/tarent/loginsrv/login"
 	"github.com/tarent/loginsrv/model"
-	"strings"
 )
 
 // ProviderName const
@@ -62,4 +64,9 @@ func (sb *Backend) Authenticate(username, password string) (bool, model.UserInfo
 		return authenticated, model.UserInfo{Sub: username}, err
 	}
 	return false, model.UserInfo{}, err
+}
+
+// AuthenticateWithContext the user
+func (sb *Backend) AuthenticateWithContext(ctx context.Context, username, password string) (bool, model.UserInfo, error) {
+	return sb.Authenticate(username, password)
 }

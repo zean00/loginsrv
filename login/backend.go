@@ -1,6 +1,8 @@
 package login
 
 import (
+	"context"
+
 	"github.com/tarent/loginsrv/model"
 )
 
@@ -11,4 +13,5 @@ type Backend interface {
 	// If the credentials do not match, false is returned.
 	// The error parameter is nil, unless a communication error with the backend occurred.
 	Authenticate(username, password string) (bool, model.UserInfo, error)
+	AuthenticateWithContext(ctx context.Context, username, password string) (bool, model.UserInfo, error)
 }

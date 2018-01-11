@@ -1,17 +1,21 @@
 package login
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/dgrijalva/jwt-go"
-	"github.com/tarent/loginsrv/logging"
-	"github.com/tarent/loginsrv/model"
-	"github.com/tarent/loginsrv/oauth2"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/opentracing/opentracing-go"
+
+	"github.com/dgrijalva/jwt-go"
+	"github.com/tarent/loginsrv/logging"
+	"github.com/tarent/loginsrv/model"
+	"github.com/tarent/loginsrv/oauth2"
 )
 
 const contentTypeHTML = "text/html; charset=utf-8"
@@ -163,7 +167,17 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleAuthentication(w http.ResponseWriter, r *http.Request, username string, password string) {
-	authenticated, userInfo, err := h.authenticate(username, password)
+
+	tracer := opentracing.GlobalTracer()
+	var authenticated bool
+	var userInfo model.UserInfo
+	var err error
+	if tracer == nil {
+		authenticated, userInfo, err = h.authenticate(username, password)
+	} else {
+		authenticated, userInfo, err = h.authenticateWithContext(r.Context(), username, password)
+	}
+
 	if err != nil {
 		logging.Application(r.Header).WithError(err).Error()
 		h.respondError(w, r)
@@ -340,6 +354,19 @@ func getCredentials(r *http.Request) (string, string, error) {
 func (h *Handler) authenticate(username, password string) (bool, model.UserInfo, error) {
 	for _, b := range h.backends {
 		authenticated, userInfo, err := b.Authenticate(username, password)
+		if err != nil {
+			return false, model.UserInfo{}, err
+		}
+		if authenticated {
+			return authenticated, userInfo, nil
+		}
+	}
+	return false, model.UserInfo{}, nil
+}
+
+func (h *Handler) authenticateWithContext(ctx context.Context, username, password string) (bool, model.UserInfo, error) {
+	for _, b := range h.backends {
+		authenticated, userInfo, err := b.AuthenticateWithContext(ctx, username, password)
 		if err != nil {
 			return false, model.UserInfo{}, err
 		}
