@@ -2,3 +2,4 @@ cover.out
 loginsrv
 caddy/cover.out
 vendor
+glide.lock
