@@ -135,7 +135,7 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "GET" {
-		userInfo, valid := h.GetToken(r)
+		userInfo, valid := h.GetToken(r, "")
 		writeLoginForm(w,
 			loginFormData{
 				Config:        h.config,
@@ -146,17 +146,19 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "POST" {
-		username, password, err := getCredentials(r)
+		username, password, rtoken, err := getCredentials(r)
+
 		if err != nil {
 			h.respondBadRequest(w, r)
 			return
 		}
+
 		if username != "" {
 			// No token found or credentials found, assuming new authentication
 			h.handleAuthentication(w, r, username, password)
 			return
 		}
-		userInfo, valid := h.GetToken(r)
+		userInfo, valid := h.GetToken(r, rtoken)
 		if valid {
 			h.handleRefresh(w, r, userInfo)
 			return
@@ -260,13 +262,16 @@ func (h *Handler) createToken(userInfo jwt.Claims) (string, error) {
 	return token.SignedString([]byte(h.config.JwtSecret))
 }
 
-func (h *Handler) GetToken(r *http.Request) (userInfo model.UserInfo, valid bool) {
-	c, err := r.Cookie(h.config.CookieName)
-	if err != nil {
-		return model.UserInfo{}, false
+func (h *Handler) GetToken(r *http.Request, rtoken string) (userInfo model.UserInfo, valid bool) {
+	if rtoken == "" {
+		c, err := r.Cookie(h.config.CookieName)
+		if err != nil {
+			return model.UserInfo{}, false
+		}
+		rtoken = c.Value
 	}
 
-	token, err := jwt.ParseWithClaims(c.Value, &model.UserInfo{}, func(*jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(rtoken, &model.UserInfo{}, func(*jwt.Token) (interface{}, error) {
 		return []byte(h.config.JwtSecret), nil
 	})
 	if err != nil {
@@ -283,7 +288,7 @@ func (h *Handler) GetToken(r *http.Request) (userInfo model.UserInfo, valid bool
 
 func (h *Handler) respondError(w http.ResponseWriter, r *http.Request) {
 	if wantHTML(r) {
-		username, _, _ := getCredentials(r)
+		username, _, _, _ := getCredentials(r)
 		writeLoginForm(w,
 			loginFormData{
 				Error:    true,
@@ -316,7 +321,7 @@ func (h *Handler) respondAuthFailure(w http.ResponseWriter, r *http.Request) {
 	if wantHTML(r) {
 		w.Header().Set("Content-Type", contentTypeHTML)
 		w.WriteHeader(403)
-		username, _, _ := getCredentials(r)
+		username, _, _, _ := getCredentials(r)
 		writeLoginForm(w,
 			loginFormData{
 				Failure:  true,
@@ -335,20 +340,20 @@ func wantHTML(r *http.Request) bool {
 	return strings.Contains(r.Header.Get("Accept"), "text/html")
 }
 
-func getCredentials(r *http.Request) (string, string, error) {
+func getCredentials(r *http.Request) (string, string, string, error) {
 	if r.Header.Get("Content-Type") == "application/json" {
 		m := map[string]string{}
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			return "", "", err
+			return "", "", "", err
 		}
 		err = json.Unmarshal(body, &m)
 		if err != nil {
-			return "", "", err
+			return "", "", "", err
 		}
-		return m["username"], m["password"], nil
+		return m["username"], m["password"], m["token"], nil
 	}
-	return r.PostForm.Get("username"), r.PostForm.Get("password"), nil
+	return r.PostForm.Get("username"), r.PostForm.Get("password"), r.PostForm.Get("token"), nil
 }
 
 func (h *Handler) authenticate(username, password string) (bool, model.UserInfo, error) {
